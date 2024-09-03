@@ -1,0 +1,19 @@
+{
+  "name": "image-search-bot",
+  "type": "module",
+  "version": "1.0",
+  "description": "",
+  "license": "MIT",
+  "main": "image-search.js",
+  "scripts": {
+    "test": "node image-search.js"
+  },
+  "dependencies": {
+    "@slack/bolt": "^3.21.1",
+    "chalk": "^5.3.0",
+    "dotenv": "^16.4.5",
+    "mongodb": "^6.8.0",
+    "puppeteer": "^23.1.1",
+    "xlsx-populate": "^1.21.0"
+  }
+}

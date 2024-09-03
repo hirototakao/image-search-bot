@@ -1,6 +1,12 @@
 import puppeteer from "puppeteer";
 import chalk from "chalk";
-import xlsxPopulate from "xlsx-populate";
+const url = "mongodb+srv://HirotoTakao:lJO8CjRvcFQP1X4f@cluster0.hh5ro.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+
+import { MongoClient } from "mongodb";
+
+const client = new MongoClient(url);
+
+const browser = await puppeteer.launch();
 
 export class search_image_bot {
 
@@ -8,7 +14,7 @@ export class search_image_bot {
     this.lastUsedNumber = 0;
   }
 
-  async searchImage(searchQuery, numberOfImages) {
+  async searchImage(searchQuery) {
     const image = [];
 
     const selectors = [
@@ -17,53 +23,32 @@ export class search_image_bot {
       "a.ptitle.novid", //images's title
     ]
 
-    const browser = await puppeteer.launch();
-
     const page = await browser.newPage();
 
     await page.setViewport({width: 1920, height: 1080});
     
     try {
-      searchQuery = searchQuery.replaceAll(" ", "+");
+      searchQuery = searchQuery.replaceAll(" ", "%20");
  
-      const url = `https://www.bing.com/images/search?q=${searchQuery}&form=QBIR&first=1`;   
-
-      console.log(chalk.green("URL:", url));
+      const url = `https://www.pinterest.com/search/pins/?q=${searchQuery}`;   
       
-      await page.goto(url, {waitUntil: "domcontentloaded", timeout: 20000});  
+      await page.goto(url, {waitUntil: "domcontentloaded"});  
 
-      await page.screenshot({path: "screen-shot0.png"});
+      await page.screenshot({path: "screen-shot1.png"});
 
-      await page.waitForSelector(selectors[0], {timeout: 10000, visible: true});
+      const image_urls = await page.$$eval('img.hCL.kVc.L4E.MIw[loading="auto"]', el => el.map(url => url.src));
 
-      const widely_displayed_pages = await page.$$eval(selectors[0], el => el.map(pages => pages.href));
-
-      numberOfImages = numberOfImages === undefined ? 7 : numberOfImages;
-  
-      numberOfImages = numberOfImages > widely_displayed_pages.length ? widely_displayed_pages.length : numberOfImages;
-
-      for(let i = 0; i < numberOfImages; i++) {
-        await page.goto(widely_displayed_pages[i], {waitUntil: "domcontentloaded", timeout: 20000});
-
-        await page.screenshot({path: "screen-shot1.png"});
-
-        await page.waitForSelector(selectors[2], {timeout: 20000, visible: true});
-
-        await page.screenshot({path: "screen-shot2.png"});
-
-        const image_url = await page.$$eval(selectors[1], el => el[0].src);
-
-        const image_title = await page.$eval(selectors[2], el => el.textContent);
-
+      let i = 0;
+      while(i < image_urls.length) {
         const object = {
-          url: image_url,
-          title: image_title
+          title: "pin page",
+          url: image_urls[i]
         }
 
         image.push(object);
+        i++;
       }
-      console.log(image[image.length - 1]);
-
+            
       await browser.close();
 
       return image;
@@ -74,7 +59,7 @@ export class search_image_bot {
     }
   }
  
-  async searchImageVisually(image_url, numberOfImages) {
+  async searchImageVisually(image_url) {
     try {
       const images = [];
 
@@ -83,8 +68,6 @@ export class search_image_bot {
       "span.tit" //the images's title
     ]
   
-    const browser = await puppeteer.launch();
-
     const page = await browser.newPage();
 
     await page.setViewport({width: 1920, height: 1080});
@@ -102,21 +85,20 @@ export class search_image_bot {
       selector.scrollIntoView();
     });
 
-    await page.screenshot({path: "screen-shot3.png"});
+    await page.screenshot({path: "screen-shot2.png"});
 
     const searchedImage = await page.$$eval(selectors[0], el => el.map(image => image.getAttribute("data-m")));
 
     const image_title = await page.$$eval(selectors[1], el => el.map(title => title.textContent));
-
-    numberOfImages = numberOfImages === undefined ? 7 : numberOfImages;
-  
-    numberOfImages = numberOfImages > searchedImage.length ? searchedImage.length : numberOfImages;
-    for(let i = 0; i < numberOfImages; i++) {
+    
+    let i = 0;
+    while(i < searchedImage.length) {
       const object = {
         title: image_title[i],
         url: extractUrlFromJSON(searchedImage[i])
       }
       images.push(object);
+      i++;
     }
 
     console.log(images);
@@ -133,46 +115,31 @@ export class search_image_bot {
     try {
       const selectors = [
         "button.VfPpkd-LgbsSe.VfPpkd-LgbsSe-OWXEXe-INsAgc.VfPpkd-LgbsSe-OWXEXe-dgl2Hf.Rj2Mlf.OLiIxf.PDpWxe.P62QJc.LQeN7.kuwdsf.r06OKe", // search result for the image URL
-        "div.ksQYvb", //search result
+        "li > a > div.ksQYvb", //search result
         "div.iJmjmd" // page title
       ];
-    
-      const browser = await puppeteer.launch();
-  
-      const page = await browser.newPage();
-  
-      console.log(`https://lens.google.com/uploadbyurl?url=${image_url}`);
-  
-      await page.goto(`https://lens.google.com/uploadbyurl?url=${image_url}`, {waitUntil: "domcontentloaded", timeout: 30000});
-  
-      await page.screenshot({path: "screen-shot4.png"});
       
-      await page.waitForSelector(selectors[1], {timeout: 20000, visible: true});
-  
-      await page.screenshot({path: "screen-shot5.png"});
+      const page = await browser.newPage();
+    
+      await page.goto(`https://lens.google.com/uploadbyurl?url=${image_url}`, {waitUntil: "domcontentloaded", timeout: 30000});
+          
+      await page.screenshot({path: "screen-shot3.png"});
   
       await page.click(selectors[0]);
   
       await page.waitForSelector(selectors[1], {timeout: 20000, visible: true});
+        
+      await page.screenshot({path: "screen-shot4.png"});
+          
+      const source_url = await page.$$eval(selectors[1], el => el[0].getAttribute("data-action-url"));
   
-      selectors[1] = "li > a > " + selectors[1];
-      
-      await page.screenshot({path: "screen-shot6.png"});
-  
-      const something = await page.$$eval(selectors[1], el => el.map(image => image.getAttribute("data-action-url")));
-  
-      console.log(chalk.green("something:", something));
-      
-      const matchedUrl = await page.$$eval(selectors[1], el => el[0].getAttribute("data-action-url"));
-  
-      const url_title = await page.$$eval(selectors[2], el => el[0].textContent);
-      await page.screenshot({path: "screen-shot7.png"});
+      const source_title = await page.$$eval(selectors[2], el => el[0].textContent);
   
       await browser.close();
   
       const object = {
-        url: matchedUrl,
-        title: url_title,
+        url: source_url,
+        title: source_title,
       }
   
       console.log(object);
@@ -183,46 +150,77 @@ export class search_image_bot {
       return null;
     }
   }
- 
-  async saveDataToExcel(image_data, query) {
-    xlsxPopulate.fromFileAsync("./image-data.xlsx").then(async(workbook) => {
-      console.log(chalk.green(image_data[0].title));
-      const usedRange = workbook.sheet(0).usedRange().value();
-      for(let i = 0; i < usedRange.length; i++) {
-        if(usedRange[i][0] === undefined) {
-          this.lastUsedNumber = i;
-          break;
+
+  async saveDataToMongoDB(data, search_query, collection_name) {
+    client.connect();      
+   
+    try {    
+      const db = client.db("image_search_bot");
+
+      const collection = db.collection(collection_name);
+
+      if(collection_name === "find_resource") {
+        async function insertData() {
+          const result = await collection.insertOne({
+            title: data.title,
+            url: data.url,
+            query: search_query
+          });
+
+          return Promise.all(result);
         }
+
+        await insertData();
+      } else {
+        async function insertData() {
+          const promises = data.map(async(object) => {
+            await collection.insertOne({
+              title: object.title, 
+              url: object.url,
+              query: search_query
+            });
+          });
+
+          await Promise.all(promises);
+        }
+
+        await insertData();
       }
-      console.log(chalk.green("lastUsedNumber:", this.lastUsedNumber));
-      for(let i = 0; i < image_data.length; i++) {
-        workbook.sheet(0).cell(`A${i + 1 + this.lastUsedNumber}`).value(image_data[i].title);
-        workbook.sheet(0).cell(`B${i + 1 + this.lastUsedNumber}`).value(image_data[i].url);
-        workbook.sheet(0).cell(`C${i + 1 + this.lastUsedNumber}`).value(query);
-      }
-      return workbook.toFileAsync("./image-data.xlsx");
-    });
+    } catch(error) {
+      console.error(error);
+    } finally {
+      await client.close().then(() => console.log(chalk.green("MongoDB connection closed successfully.")));
+    }
   }
 
-  async findDataFromExcel(query, numberOfImages) {
-      try {
-        xlsxPopulate.fromFileAsync("./image-data.xlsx").then(async(workbook) => {
-          let searchResultFromExcel = [];
-          const data = await workbook.sheet(0).usedRange().value();
-          const searchResult = await workbook.sheet(0).row(3);
+  async findDataFromMongoDB(search_query, collection_name) {
 
-          console.log(searchResult);
-        });
-      } catch(error) {
-        console.error(error);
-      }
+    await client.connect();
+
+    try {
+      const db = client.db("image_search_bot");
+
+      const collection = db.collection(collection_name);
+
+      const result = await collection.find({ query: search_query }).toArray();
+          
+      Promise.all(result).then(() => console.log(result));
+      
+      return result;
+    } catch(err) {
+      console.error(err);
+      await client.close();
+      return [];
+    } finally {
+      client.close();
+    }
   }
 }
 
 function extractUrlFromJSON(string) {
   string = string.replaceAll("&quot;", "").replaceAll(/[{}"]/g, "").split(",");
   for(let i = 0; i < string.length; i++) {
-    string[i] = string[i].includes("h") ? string[i].replace(string[i].substring(0, string[i].indexOf("h")), "") : string[i];
+    string[i] = string[i].includes("http") ? string[i].replace(string[i].substring(0, string[i].indexOf("h")), "") : string[i];
   }
   return string[0];
 }
@@ -234,5 +232,3 @@ export function getRandomInt(min, max) {
 }
 
 const functions = new search_image_bot();
-
-functions.findDataFromExcel("python pandas", 4);

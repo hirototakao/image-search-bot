@@ -16,41 +16,46 @@ const app = new bolt.App(
     logLevel: "debug"
   });
 
-app.message(/search image (.+ ?) (.+)/i, async({say, message}) => {
+app.message(/search image (.+?) (.+ ?)/i, async({say, message}) => {
   await say("searching...");
-  const urlOrQuery = message.text.match(/search image (.+) (.+)/i)[1].replaceAll(/[<>]/g, "");
-  const numberOfImages = message.text.match(/search image (.+) (.+)/i)[2]; //optional
+  let numberOfImages = message.text.match(/search image (.+?) (.+ ?)/i)[1] !== "none" ? message.text.match(/search image (.+?) (.+ ?)/i)[1] : 10; //optional
+  const urlOrQuery = message.text.match(/search image (.+?) (.+ ?)/i)[2].replaceAll(/[<>]/g, "");
   console.log(chalk.green(`urlOrQuery: ${urlOrQuery}\nnumberOfImages: ${numberOfImages}`));
 
+  const urlConfirmation = urlOrQuery.includes("https");
+
   try {
-      const searchResultFromExcel = await search_image.findDataFromExcel(urlOrQuery, parseInt(numberOfImages));
-      if(searchResultFromExcel.length === 0) {
-        const search_result = urlOrQuery.includes("https") 
-             ? await search_image.searchImageVisually(urlOrQuery, parseInt(numberOfImages)) 
-             : await search_image.searchImage(urlOrQuery, parseInt(numberOfImages));
-        
+      const searchResultFromMongoDB = await search_image.findDataFromMongoDB(urlOrQuery, urlConfirmation ? "visual_search" : "searchImage");
+      if(searchResultFromMongoDB.length === 0) {
+        const search_result = urlConfirmation
+             ? await search_image.searchImageVisually(urlOrQuery) 
+             : await search_image.searchImage(urlOrQuery);
+                
         if(search_result === null) {
-          await say(urlOrQuery.includes("https") 
+          await say(urlConfirmation 
               ? `Sorry, it couldn't find any images with the *<${urlOrQuery}|URL>*.` 
               : `Sorry, it couldn't find any images with the *${urlOrQuery}*.`);
           return;
         } else {
-          await say(urlOrQuery.includes("https") 
+          numberOfImages = numberOfImages > search_result.length ? search_result.length : numberOfImages;
+
+          await say(urlConfirmation 
               ? `Here're related images of the *<${urlOrQuery}|URL>*.` 
               : `Here're related images of the query.`);
-          for(let image of search_result) {
-            await say(`<${image.url}|${image.title}>`);
+          for(let i = 0; i < numberOfImages; i++) {
+            await say(`<${search_result[i].url}|${search_result[i].title}>`);
             await sleep(2000);
           }
-          await search_image.saveDataToExcel(search_result, urlOrQuery);
+          await search_image.saveDataToMongoDB(search_result, urlOrQuery, urlConfirmation ? "visual_search" : "searchImage");
         }
       } else {
-        console.log(chalk.green("tank"));
-        await say(urlOrQuery.includes("https") 
+        numberOfImages = numberOfImages > searchResultFromMongoDB.length ? searchResultFromMongoDB.length : numberOfImages;
+
+        await say(urlConfirmation
             ? `Here're related images of the *<${urlOrQuery}|URL>*.` 
             : `Here're related images of the query.`);
-        for(let image of searchResultFromExcel) {
-          await say(`<${image.url}|${image.title}>`);
+        for(let i = 0; i < numberOfImages; i++) {
+          await say(`<${searchResultFromMongoDB[i].url}|${searchResultFromMongoDB[i].title}>`);
           await sleep(2000);
         }
       }
@@ -62,8 +67,22 @@ app.message(/search image (.+ ?) (.+)/i, async({say, message}) => {
 
 app.message(/find resource (.+)/i, async({say, message}) => {
   const image_url = message.text.match(/find resource (.+)/i)[1].replaceAll(/[<>]/g, "");
-  const search_result = await search_image.findResource(image_url);
-  await say(search_result === null ? `Sorry, it couldn't find any resources with the <${image_url}|URL>.` : `Resource: This is search result of the <${image_url}|URL>.\n<${search_result.url}|${search_result.title}>`);
+  try {
+    const searchResultFromMongoDB = await search_image.findDataFromMongoDB(image_url, "find_resource");
+    if(searchResultFromMongoDB.length === 0) {
+      const search_result = await search_image.findResource(image_url);
+
+      await say(search_result === null ? `Sorry, it couldn't find any resources with the <${image_url}|URL>.` : `Resource: This is search result of the <${image_url}|URL>.\n<${search_result.url}|${search_result.title}>`);
+
+      await search_image.saveDataToMongoDB(search_result, image_url, "find_resource");
+    } else {
+      await say(`Resource: This is search result of the <${image_url}|URL>.\n<${searchResultFromMongoDB.url}|${searchResultFromMongoDB.title}>`);
+    }
+  } catch(e) {
+    console.error(e);
+    await say("An error ocurred while processing your request.");
+    return;
+  }
 });
 
 function sleep(ms) {
