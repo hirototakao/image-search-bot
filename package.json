@@ -6,7 +6,8 @@
   "license": "MIT",
   "main": "image-search.js",
   "scripts": {
-    "test": "node image-search.js"
+    "test": "node image-search.js",
+    "test2": "node image-search-functions.js"
   },
   "dependencies": {
     "@slack/bolt": "^3.21.1",
