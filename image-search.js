@@ -10,7 +10,7 @@ const search_image = new search_image_bot();
 
 dotenv.config();
 
-const mongo_url = "mongodb+srv://HirotoTakao:lJO8CjRvcFQP1X4f@cluster0.hh5ro.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+const mongo_url = process.env.MONGODB_CONNECTION_STRING;
 
 const client = new MongoClient(mongo_url, {
   connectTimeoutMS: 100000,

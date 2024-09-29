@@ -1,1 +1,5 @@
 .env
+node_modules
+data-maintainance.js
+experiment.js
+demo.js
