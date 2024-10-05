@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import puppeteer from "puppeteer";
+import dotenv from "dotenv";
 
 const browser = await puppeteer.launch();
 
@@ -35,13 +36,13 @@ export class search_image_bot {
  
       const url = `https://www.pinterest.com/search/pins/?q=${searchQuery}`;   
       
-      await page.goto(url, {waitUntil: "domcontentloaded"});  
+      await page.goto(url, {waitUntil: "domcontentloaded", timeout: 40000});  
 
-      await page.screenshot({path: "screen-shot1.png"});
+      await page.screenshot({path: "screen-shot0.png"});
 
       const image_urls = await page.$$eval('img.hCL.kVc.L4E.MIw[loading="auto"]', el => el.map(url => url.src));
 
-      await page.screenshot({path: "screen-shot4.png"});
+      await page.screenshot({path: "screen-shot1.png"});
       
       let i = 0;
       while(i < image_urls.length) {
@@ -85,11 +86,11 @@ export class search_image_bot {
   
       const url = `https://www.bing.com/images/search?view=detailv2&iss=sbi&form=SBIVSP&sbisrc=UrlPaste&q=imgurl:${image_url}&idpbck=1&selectedindex=0&id=${image_url}&ccid=BAiW1cy6&simid=608044551055040555&ck=C9548F7B423DB6C2582AA775C68DAA50&thid=OIP.BAiW1cy6PwlVbebERDp8-QHaHa&mediaurl=${image_url}&exph=500&expw=500&vt=2&sim=11`;
   
-      console.log(chalk.green("URL:", url));
+      console.log(chalk.bgYellow.black("URL:", url));
   
-      await page.goto(url, {waitUntil: "domcontentloaded", timeout: 12000});
+      await page.goto(url, {waitUntil: "domcontentloaded", timeout: 50000});
   
-      await page.waitForSelector(selectors[0], {timeout: 20000, visible: true});
+      await page.waitForSelector(selectors[0], {timeout: 40000, visible: true});
   
       const something = await page.evaluate(() => {
         const selector = document.querySelector("div.mainContainer.isv > div.imgContainer > a.richImgLnk");
@@ -143,11 +144,11 @@ export class search_image_bot {
 
       await page.setViewport({width: 1920, height: 1080});
           
-      await page.goto(`https://lens.google.com/uploadbyurl?url=${image_url}`, {waitUntil: "domcontentloaded"});
+      await page.goto(`https://lens.google.com/uploadbyurl?url=${image_url}`, {waitUntil: "domcontentloaded", timeout: 70000});
       
       console.log(`https://lens.google.com/uploadbyurl?url=${image_url}`);
       
-      await page.waitForSelector(selectors[0], {waitUntil: 30000, visible: true});
+      await page.waitForSelector(selectors[0], {waitUntil: 40000, visible: true});
       
       await page.screenshot({path: "screen-shot3.png"});
     
@@ -183,6 +184,35 @@ export class search_image_bot {
     } catch(err) {
       console.error(err);
       return [];
+    }a
+  }
+
+  async addDataToMongoDB(search_result, collection) {
+    try {
+      const result = await collection.insertMany(search_result);
+        
+      Promise.all([result]);      
+    } catch(err) {
+      console.error(err);
+      return;
+    }
+  }
+
+  async add_latest_data(search_result, collection) {
+    try {
+      search_result.map(async(data) => {
+        const isDataExisted = await collection.find({url: data.url, title: data.title, query: data.query}).toArray();
+      
+        Promise.all(isDataExisted).then((result) => {
+          if(result === 0) {
+            return Promise.all(collection.insertOne(data));
+          } else {
+            return;
+          }
+        });
+      });
+    } catch(err) {
+      console.error(err);
     }
   }
 }

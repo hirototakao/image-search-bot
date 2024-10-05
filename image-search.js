@@ -52,11 +52,11 @@ app.message(/search image (.+?) (.+ ?)/i, async({say, message}) => {
                 ? `Sorry, it couldn't find any images with the *<${urlOrQuery}|URL>*. Please try again.` 
                 : `Sorry, it couldn't find any images with the *${urlOrQuery}*. Please try again.`);
           } else {
-            const promise1 = await collection.insertMany(search_result).then(() => console.log(chalk.green("Data successfully inserted!")));
+            const promise1 = await search_image.addDataToMongoDB(search_result, collection).then(() => console.log(chalk.green("Data successfully inserted!")));
 
             const promise2 = sendMessage(numberOfImages, search_result, urlOrQuery, say);
 
-            Promise.all([promise1, promise2]).then(() => console.log(chalk.green("Process ended!")));           
+            Promise.all([promise1]).then(() => promise2).then(() => console.log(chalk.green("Process ended!")));
           }
         } else {
           await sendMessage(numberOfImages, result, urlOrQuery, say);
@@ -125,24 +125,21 @@ app.message(/latest update image (.+?) (.+ ?)/i, async({say, message}) => {
         } else {
           const promise1 = sendMessage(numberOfImages, search_result, urlOrQuery, say);
   
-          const promise2 = await collection.insertMany(search_result).then(() => console.log(chalk.blue("Data insertion successfully completed!"))); 
+          const promise2 = await search_image.addDataToMongoDB(search_result, collection).then(() => console.log(chalk.blue("Data insertion successfully completed!"))); 
           
-          Promise.all([promise1, promise2]).then(() => console.log(chalk.blue("Process ended!")));
+          Promise.all([promise1]).then(() => promise2).then(() => console.log(chalk.blue("Process ended!")));
         }
       } else {
-        const promise1 = collection.deleteMany({query: urlOrQuery});
-
         const search_result = urlConfirmation
              ? await search_image.searchImageVisually(urlOrQuery, page) 
              : await search_image.searchImage(urlOrQuery, page);
         
-        
-        const promise2 = sendMessage(numberOfImages, search_result, urlOrQuery, say);
+        const promise1 = sendMessage(numberOfImages, search_result, urlOrQuery, say);
 
-        const promise3 = await collection.insertMany(search_result).then(() => console.log(chalk.blue("Data insertion successfully completed!")));
+        const promise2 = await search_image.add_latest_data(search_result, collection).then(() => console.log(chalk.blue("Data insertion successfully completed!")));
 
-        Promise.all([promise1, search_result]);
-        Promise.all([promise2, promise3]).then(() => console.log(chalk.blue("Process ended!")));
+        Promise.all([search_result]);
+        Promise.all([promise1]).then(() => promise2).then(() => console.log(chalk.blue("Process ended!")));
       }
     });
   } catch(error) {
@@ -183,11 +180,11 @@ app.message(/latest update resource (.+)/i, async({say, message}) => {
       } else {   
         const search_result = await search_image.findResource(image_url, page);
 
-        const promise1 = collection.deleteOne({query: image_url});
+        const promise1 = await collection.deleteOne({ query: image_url});
         
         const promise2 = await say(`Resource: This is search result of the <${image_url}|URL>.\n<${search_result.url}|${search_result.title}>`);
         
-        const promise3 = collection.insertOne(search_result);
+        const promise3 = collection.insertOne(search_result).then(() => (console.log("Data insertion successfully completed!")));
 
         Promise.all([search_result, promise1]);
         Promise.all([promise2, promise3]).then(() => console.log(chalk.blue("Process ended!")));

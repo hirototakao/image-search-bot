@@ -12,5 +12,5 @@
   - To search latest images through text or image.
 
 - latest update resource (image url)
-  - To search a latest information on which website includes the given image.
+  - To search a latest information on which is website relevant to the given image.
   
