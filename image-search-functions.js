@@ -1,6 +1,7 @@
 import chalk from "chalk";
 import puppeteer from "puppeteer";
 import dotenv from "dotenv";
+import { MongoClient } from "mongodb";
 
 const browser = await puppeteer.launch();
 
@@ -19,9 +20,9 @@ export class search_image_bot {
 
     const year = today.getFullYear();
 
-    const month = today.getMonth() + 1;
+    const month = String(today.getMonth() + 1).length === 2 ? `${today.getMonth() + 1}` : `0${today.getMonth() + 1}`;
 
-    const date = today.getDate();
+    const date =  String(today.getDate()).length === 2 ? `${today.getDate()}` : `0${today.getDate()}`;
 
     const selectors = [
       "a.iusc", // images's preview
@@ -50,7 +51,7 @@ export class search_image_bot {
           title: "pin page",
           url: image_urls[i],
           query: searchQuery,
-          created_At:`${date}/${month}/${year}`
+          created_At: Number(`${year}${month}${date}`)
         }
 
         image.push(object);
@@ -73,9 +74,9 @@ export class search_image_bot {
   
       const year = today.getFullYear();
   
-      const month = today.getMonth() + 1;
-  
-      const date = today.getDate();
+      const month = String(today.getMonth() + 1).length === 2 ? `${today.getMonth() + 1}` : `0${today.getMonth() + 1}`;
+
+      const date =  String(today.getDate()).length === 2 ? `${today.getDate()}` : `0${today.getDate()}`;
 
       const selectors = [
         "div.mainContainer.isv > div.imgContainer > a.richImgLnk", //selectors for image URL
@@ -111,7 +112,7 @@ export class search_image_bot {
           title: image_title[i],
           url: extractUrlFromJSON(searchedImage[i]),
           query: image_url,
-          created_At: `${date}/${month}/${year}`
+          created_At: Number(`${year}${month}${date}`)
         }
         images.push(object);
         i++;
@@ -138,9 +139,9 @@ export class search_image_bot {
   
       const year = today.getFullYear();
   
-      const month = today.getMonth() + 1;
-  
-      const date = today.getDate();
+      const month = String(today.getMonth() + 1).length === 2 ? `${today.getMonth() + 1}` : `0${today.getMonth() + 1}`;
+
+      const date =  String(today.getDate()).length === 2 ? `${today.getDate()}` : `0${today.getDate()}`;
 
       await page.setViewport({width: 1920, height: 1080});
           
@@ -162,7 +163,7 @@ export class search_image_bot {
         title: source_title,
         url: source_url,
         query: image_url,
-        created_At: `${date}/${month}/${year}`
+        created_At: Number(`${year}${month}${date}`)
       }
 
       console.log(object);
@@ -184,7 +185,7 @@ export class search_image_bot {
     } catch(err) {
       console.error(err);
       return [];
-    }a
+    }
   }
 
   async addDataToMongoDB(search_result, collection) {
@@ -224,7 +225,6 @@ function extractUrlFromJSON(string) {
   }
   return string[0];
 }
-
 export function getRandomInt(min, max) {
   min = Math.ceil(min);
   max = Math.floor(max);

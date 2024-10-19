@@ -1,6 +1,9 @@
 import { findSourceMap } from "module";
 import {MongoClient, ObjectId} from "mongodb";
 import { resourceLimits } from "worker_threads";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 async function main(){
   const url = process.env.MONGODB_CONNECTION_STRING;
@@ -12,21 +15,17 @@ async function main(){
   const db = client.db("image_search_bot");
 
   try {  
-    const today = new Date();
+    const promise3 = await db.collection("find_resource").find({}).toArray();
 
-    const year = today.getFullYear();
+    const update3 = promise3.forEach(async(data) => {
+      const promise = await db.collection("find_resource").updateOne({_id: data._id}, { $set: { created_At: Number(data.created_At)}});
 
-    const month = today.getMonth();
-
-    const date = today.getDate();
-
-    const promise1 = await db.collection("searchImage").find({query: "python pandas"}).toArray();
-
-    console.log(promise1);
+      Promise.all([promise]);
+    });
+    Promise.all([promise3]).then(() => Promise.all([update3])).then(() => console.log("Data modificaton completed!"));
   } catch(error) {
     console.error(error);
   } finally {
-    client.close();
   }
 }
 
